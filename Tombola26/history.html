@@ -107,21 +107,31 @@
     renderHistory();
   }
 
-  function exportCSV() {
+ function exportExcel() {
     const winners = DB.getWinners();
     if (!winners.length) { alert('Aucun historique à exporter.'); return; }
-    const header = 'Rang,Nom,Date,Heure';
-    const rows   = winners.map((w, i) =>
-      `${i+1},"${w.name}","${w.date}","${w.time}"`
-    ).join('\n');
-    const blob = new Blob([`${header}\n${rows}`], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    a.download = 'abrar-historique-tirage.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+
+    
+    const columns = DB.getColumns().filter(c => c && !c.startsWith('__'));
+
+    
+    const data = [columns];
+
+    // Each winner row: values in the same column order
+    winners.forEach(w => {
+      data.push(columns.map(col => {
+        const val = w.row ? w.row[col] : '';
+        return val !== undefined ? val : '';
+      }));
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = columns.map(() => ({ wch: 20 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Gagnants');
+    XLSX.writeFile(wb, 'abrar-historique-tirage.xlsx');
   }
+
 
   function escHtml(str) {
     return String(str).replace(/[&<>"']/g, c =>
